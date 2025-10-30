@@ -31,11 +31,19 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const app = express();
 
+const mongoose = require("mongoose");
+mongoose.set("strictQuery", false);
+
 //  Database Connection
 require("./database/conn");
 
 //  Middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://magic-match-frontend.vercel.app",
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -48,5 +56,6 @@ const successRouter = require("./routes/success_router");
 app.use("/photo_router", photoRouter);
 app.use("/success_router", successRouter);
 app.use(router);
+
 module.exports = app;
 

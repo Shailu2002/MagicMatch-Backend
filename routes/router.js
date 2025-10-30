@@ -1,5 +1,11 @@
 const express = require("express");
 const router = express.Router();
+router.get("/", (req, res) => {
+  res.status(200).json({
+    status: "Running",
+    message: "MERN Backend is fully operational on Vercel!",
+  });
+});
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const authenticate = require("../middleware/authenticate");

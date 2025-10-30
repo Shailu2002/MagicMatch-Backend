@@ -17,6 +17,12 @@ const Ipschema = require("../models/Ipschems");
 const ForgotPass = require("../models/Forgotpass");
 const Interest = require("../models/Interest_schema");
 const Plan = require("../models/Plam");
+const Country = require("../models/CountrySchema");
+const State = require("../models/StateSchema");
+const City = require("../models/CitySchema");
+const Religion = require("../models/ReligionSchema");
+const Caste = require("../models/CasteSchema");
+const Language = require("../models/LanguageSchema");
 
 router.get("/logout", async (req, res) => {
   try {
@@ -1495,16 +1501,6 @@ router.get("/getalldetails_match/:gender", async (req, res) => {
   }
 });
 
-
-const Country=require("../models/countryschema")
-const State=require("../models/StateSchema")
-const City=require("../models/CitySchema")
-const Religion=require("../models/Religionschema");
-const Caste=require("../models/Casteschema");
-const Language=require("../models/LanguageSchema");
-const User_ip_Details = require("../models/Ipschems");
-
-
 //country options
 router.get("/getcountry", async (req, res) => {
   try {
@@ -2233,7 +2229,7 @@ router.get("/user_signup", async (req, res) => {
 //this will fetch all the user who logged in 
 router.get("/user_signin", async (req, res) => {
   try {
-               const user = await User_ip_Details.find().sort({login_date:-1});
+               const user = await Ipschema.find().sort({login_date:-1});
                console.log(user);
                res.status(201).json(user);
            }
@@ -2241,8 +2237,7 @@ router.get("/user_signin", async (req, res) => {
                res.status(404).json(error);
           }
 });
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
-
+                                                                                                                                                                                                              
   router.get("/success_story", async (req, res) =>
     { 
 

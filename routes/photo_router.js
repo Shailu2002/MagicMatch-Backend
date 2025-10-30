@@ -89,7 +89,7 @@ const Userphoto = require("../models/PhotoSchema");
 
 //  Middleware imports
 const { upload } = require("../middleware/multerConfig");
-const cloudinary = require("../middleware/cloudinary");
+const cloudinary = require("../middleware/cloudinaryConfig");
 
 // POST: Add new user photo
 router.post("/add", upload.single("user_photo"), async (req, res) => {

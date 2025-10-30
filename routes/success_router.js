@@ -113,7 +113,7 @@ const Personal = require("../models/PersonaSchema");
 
 //  Import middleware configs
 const { upload } = require("../middleware/multerConfig");
-const cloudinary = require("../middleware/cloudinary");
+const cloudinary = require("../middleware/cloudinaryConfig");
 
 // POST: Add Success Story
 router.post("/add", upload.single("success_story_photo"), async (req, res) => {

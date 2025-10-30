@@ -48,11 +48,5 @@ const successRouter = require("./routes/success_router");
 app.use("/photo_router", photoRouter);
 app.use("/success_router", successRouter);
 app.use(router);
+module.exports = app;
 
-//  Port Setup
-const PORT = process.env.PORT || 8003;
-
-//  Start Server
-app.listen(PORT, () => {
-  console.log(`✅ Server started on port ${PORT}`);
-});

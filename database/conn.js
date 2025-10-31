@@ -1,4 +1,10 @@
 const mongoose = require("mongoose");//import like work
+// 1. Connection Stability Check
+// Agar mongoose.connection.readyState 1 ya usse zyada hai, toh connection stable hai.
+if (mongoose.connection.readyState >= 1) {
+  console.log('Using existing DB connection (Warm Start)');
+  return; // Agar connected hai, toh naya connection mat banao
+}
 mongoose.connect(process.env.DATABASE
     // ,
     // {

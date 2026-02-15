@@ -15,7 +15,6 @@ const signschema = new mongoose.Schema(
         ip_address:
         {
             type: String,
-            required:true
         }
     }
 

@@ -6,7 +6,8 @@ const userSchema = new Schema({
     user_id: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        ref:"User_Password",
     }, 
     user_photo: {
         type: String,

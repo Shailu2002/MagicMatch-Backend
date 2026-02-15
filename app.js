@@ -30,10 +30,8 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const app = express();
-
 const mongoose = require("mongoose");
 mongoose.set("strictQuery", false);
-
 //  Database Connection
 require("./database/conn");
  const PORT = process.env.PORT || 8003;
@@ -45,18 +43,16 @@ app.use(
         ? "https://magic-match-frontend.vercel.app"
         : "http://localhost:3000",
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 app.use(express.json());
 app.use(cookieParser());
-
 //  Import Routers
 const router = require("./routes/router");
 const photoRouter = require("./routes/photo_router");
 const successRouter = require("./routes/success_router");
-
 //  Use Routes
 app.use("/photo_router", photoRouter);
 app.use("/success_router", successRouter);

@@ -7,9 +7,8 @@ router.get("/", (req, res) => {
   });
 });
 require("dotenv").config({ path: "./config.env" });
-const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const authenticate = require("../middleware/authenticate");
+const {authenticate,generateToken} = require("../middleware/authenticate");
 const admins = require("../models/adminSchema");
 const User_Password = require("../models/SignUpSchema");
 const User_Payment = require("../models/PaymentSchema");
@@ -31,19 +30,26 @@ const Religion = require("../models/ReligionSchema");
 const Caste = require("../models/CasteSchema");
 const Language = require("../models/LanguageSchema");
 
-router.get("/logout", async (req, res) => {
+//to validate whetehr a user is logged in or not
+// Backend (router.js)
+router.get("/authenticate_user", authenticate, (req, res) => {
+  res.status(200).send({ auth: true, user: req.user });
+});
+router.get("/logout", authenticate, async (req, res) => {
   try {
+    // Cookie clear karte waqt same options dena zaroori hai
+    res.clearCookie("jwtoken", {
+      path: "/",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production" ? true : false,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
     console.log("logout Successfully!");
-    res.clearCookie("jwtoken",{path:"/"});
-    res.status(200).json("user logout");
- 
+    return res.status(200).json({ message: "User logout successfully" });
   } catch (err) {
     res.status(500).json(err);
   }
 });
-
-
-
 router.get("/getalldata", async (req, res) => {
   try {
     const success = await Success_Story.find({ story_approval_status: 1 });
@@ -56,7 +62,7 @@ router.get("/getalldata", async (req, res) => {
 
 //get membership plans
 
-router.get("/getallplans", async (req, res) => {
+router.get("/getallplans",authenticate, async (req, res) => {
   try {
     const success = await Plan.find({ enable: 1 });
     console.log(success);
@@ -68,7 +74,7 @@ router.get("/getallplans", async (req, res) => {
 
 //update interest
 
-router.patch("/update_interest/:e1/:uind",async (req, res) => {
+router.patch("/update_interest/:e1/:uind",authenticate,async (req, res) => {
   try {
     const { e1,uind } = req.params;
     const { statust,message_reply,reply_date } = req.body;
@@ -94,7 +100,7 @@ router.patch("/update_interest/:e1/:uind",async (req, res) => {
   }
 });
 // to get all the interest received
-router.get("/getinterest_details/:uind",async (req,res) =>
+router.get("/getinterest_details/:uind",authenticate,async (req,res) =>
 {
 
   let arr = [];
@@ -148,7 +154,7 @@ router.get("/getinterest_details/:uind",async (req,res) =>
 });
    
   // to get all the interest received
-router.get("/getinterest/:uind", async (req,res) =>
+router.get("/getinterest/:uind",authenticate, async (req,res) =>
 {
   const { uind } = req.params;
   console.log(uind);
@@ -164,7 +170,7 @@ router.get("/getinterest/:uind", async (req,res) =>
   }
 });
 
-router.get("/getreceived_details/:uind", async (req,res) =>
+router.get("/getreceived_details/:uind",authenticate, async (req,res) =>
 {
 
   let arr = [];
@@ -226,7 +232,7 @@ router.get("/getreceived_details/:uind", async (req,res) =>
 });
    
   // to get all the interest received
-router.get("/getreceived/:uind",async (req,res) =>
+router.get("/getreceived/:uind",authenticate,async (req,res) =>
 {
   const { uind } = req.params;
   console.log(uind);
@@ -268,7 +274,6 @@ router.post("/user_signup1", async (req, res) => {
     user_email,
     user_contact,
     user_pass,
-    user_cpass,
     activeStatus
   } = req.body;
   try {
@@ -284,7 +289,6 @@ router.post("/user_signup1", async (req, res) => {
         user_email,
         user_contact,
         user_pass,
-        user_cpass,
         activeStatus
       });
      //here we have to hash encrypt paassword
@@ -299,7 +303,7 @@ router.post("/user_signup1", async (req, res) => {
 });
 
 // for interest sent
-router.post("/interest_sent", async (req, res) => {
+router.post("/interest_sent",authenticate,async (req, res) => {
   const { user_id, to_uid, message_sent, sent_date, sent_invitation_status,message_reply,reply_date } = req.body;
   console.log(req.body);
   try
@@ -323,7 +327,6 @@ router.post("/interest_sent", async (req, res) => {
   }
 });
 
-
 //for login
 router.post("/check_user_login", async (req, res) => {
   const { user_email, user_password, ip_address, login_date } = req.body;
@@ -340,11 +343,14 @@ router.post("/check_user_login", async (req, res) => {
 
     if (isMatch) {
       // 1. Token Generation (Timing: Just after password match)
-      const token = await usert.generateAuthToken();
+      const token = generateToken({
+        id: usert.user_id,
+        email:usert.user_email,
+      });
 
       // 2. Cookie Setting
       res.cookie("jwtoken", token, {
-        expires: new Date(Date.now() + 25892000000),
+        maxAge: 2 * 24 * 60 * 60 * 1000,
         httpOnly: true,
         secure: process.env.NODE_ENV === "production" ? true : false,
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
@@ -374,7 +380,7 @@ router.post("/check_user_login", async (req, res) => {
   }
 });
 
-router.post("/user_payment1", async (req, res) => {
+router.post("/user_payment1",authenticate, async (req, res) => {
   const {
     user_id,
     transaction_id,
@@ -401,7 +407,6 @@ router.post("/user_payment1", async (req, res) => {
       amount_received,
       user_email_id,
     });
-
     await adduser.save();
     res.status(200).json(adduser);
   } catch (error) {
@@ -430,7 +435,6 @@ router.post("/user_general", async (req, res) => {
       user_diet,
       user_hobbies,
     });
-
     await adduser.save();
     res.status(200).json(adduser);
   } catch (error) {
@@ -502,7 +506,6 @@ router.post("/user_personal", async (req, res) => {
       user_state,
       user_city
     });
-
     await adduser.save();
     res.status(200).json(adduser);
   } catch (error) {
@@ -549,16 +552,12 @@ router.post("/user_partner", async (req, res) => {
       partner_state,
       partner_city,
     });
-
     await adduser.save();
     res.status(200).json(adduser);
   } catch (error) {
     res.status(404).json(error);
   }
 });
-
-
-
 
 //for newuser
 router.post("/nsignup", async (req, res) => {
@@ -589,7 +588,7 @@ router.post("/nsignup", async (req, res) => {
 
 //get personal details
 
-router.get("/getpersonaldata_user/:uid", async (req, res) => {
+router.get("/getpersonaldata_user/:uid",authenticate, async (req, res) => {
   try {
     const { uid } = req.params;
 
@@ -608,7 +607,7 @@ router.get("/getpersonaldata_user/:uid", async (req, res) => {
 });
 
 // get general details
-router.get("/getgeneraldata/:uid", async (req, res) => {
+router.get("/getgeneraldata/:uid",authenticate, async (req, res) => {
   try{
     const { uid } = req.params;
 
@@ -627,13 +626,11 @@ router.get("/getgeneraldata/:uid", async (req, res) => {
 });
 //get partner details
 
-router.get("/getpartnerdata/:uid", async (req, res) => {
+router.get("/getpartnerdata/:uid",authenticate, async (req, res) => {
   try {
     const { uid } = req.params;
-
     const data = await User_Partner_Details.findOne({ user_id: uid });
     console.log(data);
-
     if (data) {
       console.log(data);
       res.status(200).json(data);
@@ -647,13 +644,11 @@ router.get("/getpartnerdata/:uid", async (req, res) => {
 
 //get educational details
 
-router.get("/geteducationaldata/:uid",async (req, res) => {
+router.get("/geteducationaldata/:uid",authenticate,async (req, res) => {
   try {
     const { uid } = req.params;
-
     const data = await User_Educational_Details.findOne({ user_id: uid });
     console.log(data);
-
     if (data) {
       console.log(data);
       res.status(200).json(data);
@@ -680,7 +675,7 @@ const securePassword = async (password) =>
   }
 }
   
-router.patch("/update_pass_user/:id", async (req, res) => {
+router.patch("/update_pass_user/:id",authenticate,async (req, res) => {
   try {
     const { id } = req.params;
     console.log(id);
@@ -709,7 +704,7 @@ router.patch("/update_pass_user/:id", async (req, res) => {
 
 //update personal details
 
-router.patch("/update_personal/:aid", async (req, res) => {
+router.patch("/update_personal/:aid",authenticate,async (req, res) => {
   try {
     const { aid } = req.params;
     console.log(aid);
@@ -755,7 +750,7 @@ router.patch("/update_personal/:aid", async (req, res) => {
 
 //update general details
 
-router.patch("/update_general/:uid",async (req, res) => {
+router.patch("/update_general/:uid",authenticate,async (req, res) => {
   try {
     const { uid } = req.params;
     console.log(uid);
@@ -796,7 +791,7 @@ router.patch("/update_general/:uid",async (req, res) => {
 
 //update educational details
 
-router.patch("/update_educational/:uid",async (req, res) => {
+router.patch("/update_educational/:uid",authenticate,async (req, res) => {
   try {
     const { uid } = req.params;
     console.log(uid);
@@ -834,7 +829,7 @@ router.patch("/update_educational/:uid",async (req, res) => {
 });
 
 //update partner details
-router.patch("/update_partner/:uid", async (req, res) => {
+router.patch("/update_partner/:uid",authenticate, async (req, res) => {
   try {
     const { uid } = req.params;
     console.log(uid);
@@ -891,7 +886,7 @@ router.patch("/update_partner/:uid", async (req, res) => {
 
 //joing two tables photo and personal details
 
-router.get("/gethomedata/:uind", async (req, res) => {
+router.get("/gethomedata/:uind", authenticate, async (req, res) => {
   try {
     const { uind } = req.params;
     const getdata = await User_Personal_Details.aggregate([
@@ -941,7 +936,7 @@ router.get("/gethomedata/:uind", async (req, res) => {
           user_gender: 1,
           Payment: 1,
           Interest: 1,
-          Express:1,
+          Express: 1,
         },
       },
     ]);
@@ -958,7 +953,7 @@ router.get("/gethomedata/:uind", async (req, res) => {
 
 //joing all tables photo and personal details
 
-router.get("/getalldetails_data/:uind", async (req, res) => {
+router.get("/getalldetails_data/:uind", authenticate, async (req, res) => {
   try {
     const { uind } = req.params;
     const getdata = await User_Personal_Details.aggregate([
@@ -1023,8 +1018,8 @@ router.get("/getalldetails_data/:uind", async (req, res) => {
         $match: { user_id: uind },
       },
       {
-        $sort:{ user_date: 1 }
-      }
+        $sort: { user_date: 1 },
+      },
     ]);
     if (getdata) {
       console.log(getdata);
@@ -1048,11 +1043,12 @@ router.post("/user_feedback", async (req, res) => {
     if (!preuser) {
       res.status(201).json("Your email id  is  not registered ");
     } else {
-      
       const user_id = preuser.user_id;
-      const preuser2 = await User_Personal_Details.findOne({user_id:user_id,user_name:user_name});
+      const preuser2 = await User_Personal_Details.findOne({
+        user_id: user_id,
+        user_name: user_name,
+      });
       if (preuser2) {
-       
         const adduser = new User_Feedback({
           user_name,
           user_email,
@@ -1061,11 +1057,9 @@ router.post("/user_feedback", async (req, res) => {
         });
         await adduser.save();
         res.status(200).json(adduser);
-      }
-      else
-      {
+      } else {
         res.status(202).json("name is invalid");
-        }
+      }
     }
   } catch (error) {
     res.status(404).json(error);
@@ -1074,7 +1068,7 @@ router.post("/user_feedback", async (req, res) => {
 
 //search by id
 
-router.get("/searchID/:ID/:gender", async (req, res) => {
+router.get("/searchID/:ID/:gender", authenticate, async (req, res) => {
   try {
     const { ID, gender } = req.params;
     console.log(ID, gender);
@@ -1159,14 +1153,13 @@ router.get("/searchID/:ID/:gender", async (req, res) => {
 });
 
 //search by age
-router.get("/searchage/:Age/:gender", async (req, res) => {
+router.get("/searchage/:Age/:gender", authenticate, async (req, res) => {
   try {
-  
     const { Age, gender } = req.params;
-    console.log( Age, gender);
+    console.log(Age, gender);
     const query = {
       user_gender: gender,
-      user_age:Number(Age)
+      user_age: Number(Age),
     };
 
     const getdata = await User_Personal_Details.aggregate([
@@ -1247,7 +1240,7 @@ router.get("/searchage/:Age/:gender", async (req, res) => {
 });
 
 //search by religion
-router.get("/searchRel/:Religion/:gender",async (req, res) => {
+router.get("/searchRel/:Religion/:gender", authenticate, async (req, res) => {
   try {
     const { Religion, gender } = req.params;
     console.log(Religion, gender);
@@ -1333,7 +1326,7 @@ router.get("/searchRel/:Religion/:gender",async (req, res) => {
 });
 //search by mother tongue
 
-router.get("/searchMton/:Mtongue/:gender",async (req, res) => {
+router.get("/searchMton/:Mtongue/:gender", authenticate, async (req, res) => {
   try {
     const { Mtongue, gender } = req.params;
     console.log(Mtongue, gender);
@@ -1418,7 +1411,7 @@ router.get("/searchMton/:Mtongue/:gender",async (req, res) => {
   }
 });
 
-router.get("/getalldetails_match/:gender", async (req, res) => {
+router.get("/getalldetails_match/:gender", authenticate, async (req, res) => {
   try {
     const { gender } = req.params;
     const getdata = await User_Personal_Details.aggregate([

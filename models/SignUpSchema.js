@@ -1,7 +1,6 @@
 //step 4 table banana database me 
 const mongoose = require("mongoose");
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const signschema = new mongoose.Schema(
     {
         user_id:
@@ -29,23 +28,11 @@ const signschema = new mongoose.Schema(
             type: String,
             required:true
         },
-        user_cpass:
-        {
-            type: String,
-            required:true
-        },
         activeStatus:
         {
             type: Boolean,
             required:true
-        },
-        tokens: [
-            {
-                token: {
-                    type: String,
-                }
-            }
-        ]
+        }
         
     }
 
@@ -59,21 +46,6 @@ signschema.pre('save', async  function (next) {
     }
     next();
 })
-
-//we are generating token
-
-signschema.methods.generateAuthToken = async function () {
-    try {
-        let token = jwt.sign({ _id: this._id }, process.env.SECRET_KEY);
-        this.tokens = this.tokens.concat({ token: token });
-        await this.save();
-        return token;
-    }
-    catch (err)
-    {
-        console.log(err);
-    }
-}
 
 const User_Password = new mongoose.model("User_Password",signschema);
 module.exports = User_Password;

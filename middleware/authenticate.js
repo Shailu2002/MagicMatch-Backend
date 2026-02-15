@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+require("dotenv").config({ path: "./config.env" });
 const User_Password = require("../models/SignUpSchema");
 
 const authenticate = async (req, res, next) => {
@@ -15,8 +16,7 @@ const authenticate = async (req, res, next) => {
 
     // 3. Find User in DB
     const rootUser = await User_Password.findOne({
-      _id: verifyToken._id,
-      "tokens.token": token,
+      user_id: verifyToken.id,
     });
 
     if (!rootUser) {
@@ -24,11 +24,9 @@ const authenticate = async (req, res, next) => {
     }
 
     // 4. Attach data to request object
-    req.token = token;
-    req.rootUser = rootUser;
-    req.userID = rootUser._id;
-
-    next(); // Authorization success!
+    req.user = verifyToken;
+    console.log(req.user);
+    return next(); // Authorization success!
   } catch (err) {
     // Token expire ho gaya ho ya verify na hua ho
     res.status(401).send("unauthorized: Invalid token");
@@ -36,4 +34,12 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = authenticate;
+module.exports.authenticate = authenticate;
+require("dotenv").config({ path: "./config.env" });
+const generateToken = ({ id,email}) => {
+  return jwt.sign({ id, email }, process.env.SECRET_KEY, {
+    expiresIn:"2d",
+  });
+}
+
+module.exports.generateToken = generateToken;

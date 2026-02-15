@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "serve": "--ignore client"
+    "serve": "--ignore client",
+    "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,7 @@
     "cloudinary": "^2.8.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.4",
     "express": "^4.18.2",
     "express-fileupload": "^1.4.0",
     "http-proxy-middleware": "^2.0.6",
@@ -24,5 +26,8 @@
     "path": "^0.12.7",
     "streamifier": "^0.1.1",
     "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

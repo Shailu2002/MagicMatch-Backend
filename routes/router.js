@@ -6,6 +6,7 @@ router.get("/", (req, res) => {
     message: "MERN Backend is fully operational on Vercel!",
   });
 });
+require("dotenv").config({ path: "./config.env" });
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const authenticate = require("../middleware/authenticate");
@@ -325,65 +326,51 @@ router.post("/interest_sent", async (req, res) => {
 
 //for login
 router.post("/check_user_login", async (req, res) => {
-  const { user_email, user_password ,ip_address, login_date} = req.body;
+  const { user_email, user_password, ip_address, login_date } = req.body;
+
   try {
-    let token;
     const usert = await User_Password.findOne({ user_email: user_email });
-    console.log(req.body, usert);
-    if (usert)
-    {
 
-  
-      //yaha par pehle jo password user ne enter kiya h vo likho then original hashed password
-      const isMatch = bcrypt.compareSync(user_password, usert.user_pass);
-      console.log(usert.user_pass, user_password);
-      console.log(isMatch);
-      if (isMatch)
-      {
-
-         token = await usert.generateAuthToken();
-        console.log(token);
-
-        res.cookie("jwtoken", token, {
-          expires: new Date(Date.now() + 25892000000),
-          httpOnly:true
-        });
-        res.status(200).json(usert);
-        const ifexist = await Ipschema.findOne({ user_email: user_email })
-        if (ifexist)
-        {
-          const updateuser = await Ipschema.updateOne(
-            {user_email:user_email},
-            {
-              $set: {
-                login_date: login_date,
-                ip_address:ip_address
-              },
-            },
-            {
-              new: true,
-            }
-          );
-          
-        }
-        else
-        {
-          const adduser = new Ipschema({
-            login_date,user_email,ip_address
-         });
-          await adduser.save();
-          
-        }
-        
-      } else {
-        res.status(201).json("incorrect password");
-      }
+    if (!usert) {
+      return res.status(401).json("Email id is not registered");
     }
-    else {
-      res.status(401).json("Email id is not registered");
+
+    // Password Match
+    const isMatch = bcrypt.compareSync(user_password, usert.user_pass);
+
+    if (isMatch) {
+      // 1. Token Generation (Timing: Just after password match)
+      const token = await usert.generateAuthToken();
+
+      // 2. Cookie Setting
+      res.cookie("jwtoken", token, {
+        expires: new Date(Date.now() + 25892000000),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production" ? true : false,
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      });
+
+      // 3. IP Logging Logic (Response se pehle execute karna)
+      const ifexist = await Ipschema.findOne({ user_email: user_email });
+      if (ifexist) {
+        await Ipschema.updateOne(
+          { user_email: user_email },
+          { $set: { login_date: login_date, ip_address: ip_address } }
+        );
+      } else {
+        const adduser = new Ipschema({ login_date, user_email, ip_address });
+        await adduser.save();
+      }
+
+      // 4. FINAL RESPONSE (Ab sab safe hai)
+      return res.status(200).json(usert);
+
+    } else {
+      return res.status(201).json("incorrect password");
     }
   } catch (error) {
-    res.status(400).json(error);
+    console.log(error);
+    return res.status(400).json(error);
   }
 });
 

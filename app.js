@@ -35,7 +35,6 @@ mongoose.set("strictQuery", false);
 //  Database Connection
 require("./database/conn");
 const PORT = process.env.PORT || 8003;
-app.set("trust proxy", 1); 
 //  Middlewares
 app.use(
   cors({

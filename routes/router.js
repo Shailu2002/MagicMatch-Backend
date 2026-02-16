@@ -41,10 +41,8 @@ router.get("/logout", authenticate, async (req, res) => {
     res.clearCookie("jwtoken", {
       path: "/",
       httpOnly: true,
-      secure: true ,
-      sameSite: "none"
-      // secure: process.env.NODE_ENV === "production" ? true : false,
-      // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production" ? true : false,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     });
     console.log("logout Successfully!");
     return res.status(200).json({ message: "User logout successfully" });
@@ -354,10 +352,8 @@ router.post("/check_user_login", async (req, res) => {
       res.cookie("jwtoken", token, {
         maxAge: 2 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: true ,
-        sameSite:"none"
-        // secure: process.env.NODE_ENV === "production" ? true : false,
-        // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: process.env.NODE_ENV === "production" ? true : false,
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       });
 
       // 3. IP Logging Logic (Response se pehle execute karna)

@@ -34,7 +34,8 @@ const mongoose = require("mongoose");
 mongoose.set("strictQuery", false);
 //  Database Connection
 require("./database/conn");
- const PORT = process.env.PORT || 8003;
+const PORT = process.env.PORT || 8003;
+app.set("trust proxy", 1); 
 //  Middlewares
 app.use(
   cors({
@@ -49,6 +50,7 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+
 //  Import Routers
 const router = require("./routes/router");
 const photoRouter = require("./routes/photo_router");

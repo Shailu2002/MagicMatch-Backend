@@ -354,6 +354,7 @@ router.post("/check_user_login", async (req, res) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production" ? true : false,
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        path:"/",
       });
 
       // 3. IP Logging Logic (Response se pehle execute karna)

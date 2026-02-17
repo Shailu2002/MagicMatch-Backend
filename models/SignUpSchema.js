@@ -42,7 +42,6 @@ const signschema = new mongoose.Schema(
 signschema.pre('save', async  function (next) {
     if (this.isModified('user_pass')) {
         this.user_pass = bcrypt.hashSync(this.user_pass, 12);
-        this.user_cpass = bcrypt.hashSync(this.user_cpass, 12); 
     }
     next();
 })

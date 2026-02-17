@@ -286,10 +286,11 @@ router.post("/user_signup1", async (req, res) => {
   try {
     console.log(req.body);
     const preuser = await User_Password.findOne({ user_email: user_email });
+    console.log(preuser);
     if (preuser) {
-      console.log(preuser);
       res.status(400).json("You are Already Registered");
     } else {
+      console.log("add part");
       const adduser = new User_Password({
         user_id,
         user_date,

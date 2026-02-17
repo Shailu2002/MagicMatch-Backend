@@ -41,6 +41,7 @@ router.get("/logout", authenticate, async (req, res) => {
     res.clearCookie("jwtoken", {
       path: "/",
       httpOnly: true,
+      expires: new Date(0),
       secure: process.env.NODE_ENV === "production" ? true : false,
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     });

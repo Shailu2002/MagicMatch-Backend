@@ -5,9 +5,7 @@ const User_Password = require("../models/SignUpSchema");
 const authenticate = async (req, res, next) => {
   try {
     // 1. Get token from cookies
-  const token =
-    req.cookies.jwtoken ||
-    req.headers.cookie?.split("jwtoken=")[1]?.split(";")[0];
+    const token =req.cookies.jwtoken;
 
     if (!token) {
       return res.status(401).send("unauthorized: No token found");

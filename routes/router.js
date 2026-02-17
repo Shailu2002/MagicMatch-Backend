@@ -683,19 +683,17 @@ const securePassword = async (password) =>
   }
 }
   
-router.patch("/update_pass_user/:id",authenticate,async (req, res) => {
+router.patch("/update_pass_user/:id",async (req, res) => {
   try {
     const { id } = req.params;
     console.log(id);
-    const { user_pass, user_cpass } = req.body;
+    const { user_pass} = req.body;
     const user_passHash = await securePassword(user_pass);
-    const user_cpassHash = await securePassword(user_cpass);
     const updateuser = await User_Password.findByIdAndUpdate(
       id,
       {
         $set: {
           user_pass: user_passHash,
-          user_cpass: user_cpassHash,
         },
       },
       {

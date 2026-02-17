@@ -37,6 +37,12 @@ router.get("/authenticate_user", authenticate, (req, res) => {
 });
 router.get("/logout", authenticate, async (req, res) => {
   try {
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     // Cookie clear karte waqt same options dena zaroori hai
     res.clearCookie("jwtoken", {
       path: "/",

@@ -378,7 +378,11 @@ router.post("/check_user_login", async (req, res) => {
       }
 
       // 4. FINAL RESPONSE (Ab sab safe hai)
-      return res.status(200).json(usert);
+      return res.status(200).json({
+        success: true,
+        token: token,
+        user:usert
+      });
 
     } else {
       return res.status(201).json("incorrect password");

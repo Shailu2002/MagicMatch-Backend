@@ -1704,7 +1704,7 @@ router.post("/add_c",async(req,res)=>{
 router.post("/add_s",async(req,res)=>{      
   try{
     
-    const {name,countrycode}=req.body;
+    const {name,countrycode,statecode}=req.body;
     if(!name||!countrycode){
       res.status(422).json("fill all the details")
     }
@@ -1714,7 +1714,7 @@ router.post("/add_s",async(req,res)=>{
       res.status(404).json("this State is already registered!!");
     }
     else{
-    const addPlan=new State({name,countrycode});
+    const addPlan=new State({name,countrycode,statecode});
     await addPlan.save();
     res.status(201).json(addPlan);
     console.log(addPlan);

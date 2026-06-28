@@ -29,7 +29,386 @@ const City = require("../models/CitySchema");
 const Religion = require("../models/ReligionSchema");
 const Caste = require("../models/CasteSchema");
 const Language = require("../models/LanguageSchema");
+const WeightConfig = require("../models/WeightConfig"); 
 
+
+// =======================================================
+// STEP 2: ADAPTIVE MATCHING ROUTE WITH ALL TABLES JOINED
+// =======================================================
+router.get("/get_magic_matches/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // 1. Logged-in user ki partner preferences fetch karo
+    const myPref = await User_Partner_Details.findOne({ user_id: userId });
+    if (!myPref) {
+      return res.status(400).json({ success: false, message: "Partner preferences not found!" });
+    }
+    const targetGender = myPref.partner_gender;
+
+    // 2. Database se dynamic weights list fetch karo
+    const weightsList = await WeightConfig.find({});
+    const weights = {};
+    weightsList.forEach(w => {
+      weights[w.criteria] = (targetGender === "male") ? w.male_weightage : w.female_weightage;
+    });
+
+    // Baseline fallbacks agar DB disconnect ho
+    const defaultWeights = targetGender === "male" 
+      ? { working_with: 60, city: 50, mtongue: 45, profession: 50, age: 50, state: 35, height: 30, diet: 20, qualification: 25, country: 10 }
+      : { working_with: 20, city: 60, mtongue: 60, profession: 20, age: 50, state: 40, height: 30, diet: 40, qualification: 25, country: 10 };
+
+    const activeWeights = Object.keys(weights).length ? weights : defaultWeights;
+    const totalMaxPossibleScore = Object.values(activeWeights).reduce((a, b) => a + b, 0);
+
+    // 3. MongoDB Aggregation Pipeline - Joins personal, education, general, photos & partner prefs
+    const matches = await User_Personal_Details.aggregate([
+      // STAGE 1: HARD CONSTRAINTS (Gender filter & Exclude self)
+      {
+        $match: {
+          user_id: { $ne: userId },
+          user_gender: targetGender,
+        },
+      },
+
+      // STAGE 2: JOIN WITH EDUCATIONAL DETAILS
+      {
+        $lookup: {
+          from: "user_educational_details", // Compass me agar lowercase/plural name alag ho to sahi kar lena
+          localField: "user_id",
+          foreignField: "user_id",
+          as: "educationData",
+        },
+      },
+      { $unwind: { path: "$educationData", preserveNullAndEmptyArrays: true } },
+      // =======================================================
+      // JOIN WITH SIGNUP DETAILS (For Contact Email)
+      // =======================================================
+      {
+        $lookup: {
+          from: "user_passwords", // Tumhari collection ka exact naam
+          localField: "user_id",
+          foreignField: "user_id",
+          as: "signupData",
+        },
+      },
+      { $unwind: { path: "$signupData", preserveNullAndEmptyArrays: true } },
+
+      // STAGE 3: JOIN WITH GENERAL DETAILS
+      {
+        $lookup: {
+          from: "user_general_details",
+          localField: "user_id",
+          foreignField: "user_id",
+          as: "generalData",
+        },
+      },
+      { $unwind: { path: "$generalData", preserveNullAndEmptyArrays: true } },
+
+      {
+        $lookup: {
+          from: "user_payments", // Compass me PaymentSchema ki table ka lowercase/plural name check kar lena (jaise user_payments)
+          localField: "user_id",
+          foreignField: "user_id",
+          as: "paymentData",
+        },
+      },
+      // Ek user ki multiple payment history ho sakti h, isliye safe flat array element check use karenge ya unwind line:
+      { $unwind: { path: "$paymentData", preserveNullAndEmptyArrays: true } },
+
+      // STAGE 4: JOIN WITH PHOTO DETAILS
+      {
+        $lookup: {
+          from: "user_photos", // Compass name verify kar lena bhai
+          localField: "user_id",
+          foreignField: "user_id",
+          as: "photoData",
+        },
+      },
+      { $unwind: { path: "$photoData", preserveNullAndEmptyArrays: true } },
+
+      // STAGE 5: JOIN WITH PARTNER PREFERENCES (Taaki unki choices bhi card me aage dikha sakein)
+      {
+        $lookup: {
+          from: "user_partner_details",
+          localField: "user_id",
+          foreignField: "user_id",
+          as: "partnerPrefData",
+        },
+      },
+      {
+        $unwind: { path: "$partnerPrefData", preserveNullAndEmptyArrays: true },
+      },
+
+      // STAGE 6: STRICT RELIGION & MARITAL STATUS CHECKS
+      {
+        $match: {
+          $and: [
+            {
+              $or: [
+                { user_religion: { $in: myPref.partner_religion } },
+                { $expr: { $in: ["open to all", myPref.partner_religion] } },
+              ],
+            },
+            {
+              $or: [
+                { user_marital: { $in: myPref.partner_marital_status } },
+                {
+                  $expr: {
+                    $in: ["open to all", myPref.partner_marital_status],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+
+      // STAGE 7: ADAPTIVE WEIGHTS CALCULATIONS
+      {
+        $addFields: {
+          workingWithPoints: {
+            $cond: [
+              {
+                $or: [
+                  {
+                    $in: [
+                      "$educationData.user_working_with",
+                      myPref.partner_working_with,
+                    ],
+                  },
+                  {
+                    $expr: {
+                      $in: ["open to all", myPref.partner_working_with],
+                    },
+                  },
+                ],
+              },
+              activeWeights.working_with,
+              0,
+            ],
+          },
+          professionPoints: {
+            $cond: [
+              {
+                $or: [
+                  {
+                    $in: [
+                      "$educationData.user_profession",
+                      myPref.partner_profession,
+                    ],
+                  },
+                  {
+                    $expr: { $in: ["open to all", myPref.partner_profession] },
+                  },
+                ],
+              },
+              activeWeights.profession,
+              0,
+            ],
+          },
+          qualificationPoints: {
+            $cond: [
+              {
+                $or: [
+                  {
+                    $in: [
+                      "$educationData.user_highest_qualification",
+                      myPref.partner_highest_qualification,
+                    ],
+                  },
+                  {
+                    $expr: {
+                      $in: [
+                        "open to all",
+                        myPref.partner_highest_qualification,
+                      ],
+                    },
+                  },
+                ],
+              },
+              activeWeights.qualification,
+              0,
+            ],
+          },
+          cityPoints: {
+            $cond: [
+              {
+                $or: [
+                  { $in: ["$user_city", myPref.partner_city] },
+                  { $expr: { $in: ["open to all", myPref.partner_city] } },
+                ],
+              },
+              activeWeights.city,
+              0,
+            ],
+          },
+          mtonguePoints: {
+            $cond: [
+              {
+                $or: [
+                  { $in: ["$user_mtongue", myPref.partner_mtongue] },
+                  { $expr: { $in: ["open to all", myPref.partner_mtongue] } },
+                ],
+              },
+              activeWeights.mtongue,
+              0,
+            ],
+          },
+          agePoints: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ["$user_age", myPref.partner_min_age] },
+                  { $lte: ["$user_age", myPref.partner_max_age] },
+                ],
+              },
+              activeWeights.age,
+              0,
+            ],
+          },
+          statePoints: {
+            $cond: [
+              {
+                $or: [
+                  { $in: ["$user_state", myPref.partner_state] },
+                  { $expr: { $in: ["open to all", myPref.partner_state] } },
+                ],
+              },
+              activeWeights.state,
+              0,
+            ],
+          },
+          countryPoints: {
+            $cond: [
+              {
+                $or: [
+                  { $in: ["$user_country", myPref.partner_country] },
+                  { $expr: { $in: ["open to all", myPref.partner_country] } },
+                ],
+              },
+              activeWeights.country,
+              0,
+            ],
+          },
+          dietPoints: {
+            $cond: [
+              {
+                $or: [
+                  { $in: ["$generalData.user_diet", myPref.partner_diet] },
+                  { $expr: { $in: ["open to all", myPref.partner_diet] } },
+                ],
+              },
+              activeWeights.diet,
+              0,
+            ],
+          },
+          heightPoints: {
+            $cond: [
+              {
+                $and: [
+                  { $ifNull: ["$generalData.user_height", false] },
+                  {
+                    $gte: [
+                      {
+                        $toInt: {
+                          $trim: {
+                            input: "$generalData.user_height",
+                            chars: "cm",
+                          },
+                        },
+                      },
+                      {
+                        $toInt: {
+                          $trim: {
+                            input: myPref.partner_min_height,
+                            chars: "cm",
+                          },
+                        },
+                      },
+                    ],
+                  },
+                  {
+                    $lte: [
+                      {
+                        $toInt: {
+                          $trim: {
+                            input: "$generalData.user_height",
+                            chars: "cm",
+                          },
+                        },
+                      },
+                      {
+                        $toInt: {
+                          $trim: {
+                            input: myPref.partner_max_height,
+                            chars: "cm",
+                          },
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+              activeWeights.height,
+              0,
+            ],
+          },
+        },
+      },
+
+      // STAGE 8: COMPATIBILITY SCORE GENERATION
+      {
+        $addFields: {
+          matchCompatibility: {
+            $round: [
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      {
+                        $add: [
+                          "$workingWithPoints",
+                          "$cityPoints",
+                          "$mtonguePoints",
+                          "$professionPoints",
+                          "$agePoints",
+                          "$statePoints",
+                          "$dietPoints",
+                          "$qualificationPoints",
+                          "$countryPoints",
+                          "$heightPoints",
+                        ],
+                      },
+                      totalMaxPossibleScore,
+                    ],
+                  },
+                  100,
+                ],
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          matchCompatibility: { $gte: 60 },
+        },
+      },
+      // STAGE 9: SORT BY HIGHEST COMPATIBILITY
+      {
+        $sort: { matchCompatibility: -1 },
+      },
+    ]);
+    console.log(matches);
+    return res.status(200).json({ success: true, data: matches });
+
+  } catch (error) {
+    console.error("Dynamic Ultimate Aggregation Error: ", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+});
 //to validate whetehr a user is logged in or not
 // Backend (router.js)
 router.get("/authenticate_user", authenticate, (req, res) => {
